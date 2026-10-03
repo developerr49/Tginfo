@@ -1,12 +1,10 @@
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import JSONResponse
-import pandas as pd
 import duckdb
 import random
 
-app = FastAPI(title="Rahul Telegram Leak API", version="3.3")
+app = FastAPI(title="Rahul Telegram Leak API", version="3.4")
 
-# Hugging Face ki file ka direct raw download link
 CSV_DIRECT_URL = "https://huggingface.co/datasets/Rahuldev001/mr-rahuls-portal/resolve/main/Telegram_27.csv"
 
 _db_conn = None
@@ -20,11 +18,11 @@ def get_duckdb_conn():
     global _db_conn
     if _db_conn is None:
         try:
-            print("Connecting directly to CSV URL via DuckDB...")
+            print("Connecting to CSV URL via DuckDB with error ignore...")
             _db_conn = duckdb.connect(database=':memory:', read_only=False)
             
-            # DuckDB direct URL se bina kisi token ke table bana lega
-            _db_conn.execute(f"CREATE TABLE leak_data AS SELECT * FROM read_csv_auto('{CSV_DIRECT_URL}')")
+            # Yahan 'ignore_errors=true' daal diya hai taaki kharab lines skip ho jayein
+            _db_conn.execute(f"CREATE TABLE leak_data AS SELECT * FROM read_csv_auto('{CSV_DIRECT_URL}', ignore_errors=true)")
             print("Database ready successfully!")
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Database load error: {str(e)}")
@@ -38,7 +36,7 @@ def search_leak(q: str = Query(..., description="Telegram Username, ID or Number
     user_data = API_KEYS_DB[key]
     if user_data["tier"] == "free":
         if user_data["requests_left"] <= 0:
-            raise HTTPException(status_code=429, detail="Free limit exhausted! Buy unlimited key from @Mr_Rahul_Dev")
+            raise HTTPException(status_code=429, detail="Free limit exhausted! Buy unlimited api from @Mr_Rahul_Dev")
         user_data["requests_left"] -= 1
 
     conn = get_duckdb_conn()
