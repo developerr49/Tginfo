@@ -1,20 +1,17 @@
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import JSONResponse
-from huggingface_hub import hf_hub_download
 import duckdb
-import random
 import os
+import requests
 
-app = FastAPI(title="Rahul Telegram Leak API", version="3.0")
+app = FastAPI(title="Rahul Telegram Leak API", version="3.1")
 
-# Hugging Face configuration
-REPO_ID = "Rahudev001/mr-rahuls-portal"
-FILENAME = "Telegram_27.csv"
+# Hugging Face ka Direct Raw File URL yahan daal dein
+CSV_URL = "https://huggingface.co/datasets/Rahuldev001/mr-rahuls-portal/resolve/main/Telegram_27.csv"
 
 _db_conn = None
 
-# Database for API Keys (Aap yahan apne secure keys store kar sakte hain)
-# Format: "api_key": {"tier": "free/paid", "requests_left": limit}
+# Database for API Keys
 API_KEYS_DB = {
     "rahul_748_free": {"tier": "free", "requests_left": 5},
     "rahul_vip_9999": {"tier": "paid", "requests_left": 999999}
@@ -24,19 +21,18 @@ def get_duckdb_conn():
     global _db_conn
     if _db_conn is None:
         try:
-            print("Downloading/Locating CSV from Hugging Face...")
-            file_path = hf_hub_download(repo_id=REPO_ID, filename=FILENAME, repo_type="dataset")
-            
-            print("Initializing DuckDB engine...")
+            print("Connecting to DuckDB and loading CSV directly from URL...")
             _db_conn = duckdb.connect(database=':memory:', read_only=False)
-            _db_conn.execute(f"CREATE TABLE leak_data AS SELECT * FROM read_csv_auto('{file_path}')")
-            print("Database ready!")
+            
+            # DuckDB direct URL se stream karke table bana lega bina token ke!
+            _db_conn.execute(f"CREATE TABLE leak_data AS SELECT * FROM read_csv_auto('{CSV_URL}')")
+            print("Database ready successfully!")
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Database load error: {str(e)}")
     return _db_conn
 
 @app.get("/api/key-rahul/leak")
-def search_leak(q: str = Query(..., description="Telegram Username or User ID or Number"), key: str = Query(..., description="API Key")):
+def search_leak(q: str = Query(..., description="Telegram Username, ID or Number"), key: str = Query(..., description="API Key")):
     
     # 1. API Key Validation
     if not key or key not in API_KEYS_DB:
@@ -52,7 +48,7 @@ def search_leak(q: str = Query(..., description="Telegram Username or User ID or
 
     conn = get_duckdb_conn()
     
-    # 3. Search across all columns automatically (Username, ID, Phone etc.)
+    # 3. Search across all columns automatically
     query = f"SELECT * FROM leak_data WHERE CAST(* AS VARCHAR) ILIKE '%{q}%' LIMIT 10"
     
     try:
@@ -85,10 +81,10 @@ def search_leak(q: str = Query(..., description="Telegram Username or User ID or
 # --- ADMIN ENDPOINT TO GENERATE RANDOM SECURE KEYS ---
 @app.get("/admin/generate-key")
 def generate_key(admin_secret: str, tier: str = "paid", limit: int = 999999):
-    if admin_secret != "rahul_secret_admin_pass": # Ise secure rakhna
+    if admin_secret != "rahul_secret_admin_pass":
         raise HTTPException(status_code=403, detail="Unauthorized")
     
-    # Random suffix generate karega taaki koi guess na kar sake (jaise rahul_849)
+    import random
     random_suffix = random.randint(100, 999)
     new_key = f"rahul_{random_suffix}_vip"
     
