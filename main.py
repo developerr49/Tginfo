@@ -1,14 +1,13 @@
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import JSONResponse
-from huggingface_hub import hf_hub_download
+import pandas as pd
 import duckdb
-import os
 import random
 
-app = FastAPI(title="Rahul Telegram Leak API", version="3.2")
+app = FastAPI(title="Rahul Telegram Leak API", version="3.3")
 
-REPO_ID = "Rahudev001/mr-rahuls-portal"
-FILENAME = "Telegram_27.csv"
+# Hugging Face ki file ka direct raw download link
+CSV_DIRECT_URL = "https://huggingface.co/datasets/Rahuldev001/mr-rahuls-portal/resolve/main/Telegram_27.csv"
 
 _db_conn = None
 
@@ -21,21 +20,12 @@ def get_duckdb_conn():
     global _db_conn
     if _db_conn is None:
         try:
-            print("Downloading CSV from Hugging Face using token...")
-            # Render ke environment variable se token apne aap utha lega
-            hf_token = os.environ.get("HF_TOKEN")
-            
-            file_path = hf_hub_download(
-                repo_id=REPO_ID, 
-                filename=FILENAME, 
-                repo_type="dataset",
-                token=hf_token
-            )
-            
-            print("Initializing DuckDB engine...")
+            print("Connecting directly to CSV URL via DuckDB...")
             _db_conn = duckdb.connect(database=':memory:', read_only=False)
-            _db_conn.execute(f"CREATE TABLE leak_data AS SELECT * FROM read_csv_auto('{file_path}')")
-            print("Database ready!")
+            
+            # DuckDB direct URL se bina kisi token ke table bana lega
+            _db_conn.execute(f"CREATE TABLE leak_data AS SELECT * FROM read_csv_auto('{CSV_DIRECT_URL}')")
+            print("Database ready successfully!")
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Database load error: {str(e)}")
     return _db_conn
